@@ -44,41 +44,63 @@ class AmazonSQS extends Object{
 	/**
 	 * Create a new queue, or get an existing one
 	 * @param  string $queueName Name of the queue that we're going to use
-	 * @return Aws\Sqs\SqsClient
+	 * @return AmazonSQS
 	 */
 	public function findOrMakeQueue($queueName) {
 		$sqs = $this->sqs->createQueue(array('QueueName' => $queueName));
 		$this->queueUrl = $sqs->get('QueueUrl');
-		return $this->sqs;
+		return $this;
 	}
 
 	/**
 	 * Send a message to the current Amazon queue
+	 *
+	 * Known issues:
+	 * - is this getting sent more than once?
 	 * @param  mixed $data
-	 * @return Guzzle\Service\Resource\Model
+	 * @return AmazonSQS
 	 */
 	public function enqueue($data) {
 		$serializedData = serialize($data);
-		return $this->sqs->sendMessage(array(
+		$this->sqs->sendMessage(array(
 			'QueueUrl' => $this->queueUrl,
 			'MessageBody' => $serializedData
 		));
+
+		return $this;
 	}
 
 	/**
 	 * Receive a message from the current Amazon queue
-	 * @param  integer $num number of messages to dequeue
+	 * 
+	 * Known issue:
+	 * - for some reason Amazon does not return the correct message, or it is not in the correct order. 
 	 * @todo: dequeue more than one item
-	 * @return unserialized string, or null if there is no message
+	 * @return array of Message, or null if there is no message
 	 */
 	public function dequeue() {
-		$message = $this->sqs->receiveMessage(array(
+		$messages = $this->sqs->receiveMessage(array(
 			'QueueUrl' => $this->queueUrl
 		));
-		if($message) {
-			$body = $message->getPath('Messages/*/Body');
-			return count($body) ? unserialize($body[0]) : null;
+		if($messages) {
+			$message = $messages->getPath('Messages/0');
+			$message['Body'] = unserialize($message['Body']);
+			return $message;
 		}
 		return null;
+	}
+
+	/**
+	 * Delete message - indicate to Amazon we received the message, by returning part of it
+	 * @param  [type] $receiptHandle receipt handle field of returned message
+	 * @return AmazonSQS
+	 */
+	public function deleteMessage($receiptHandle) {
+		$this->sqs->deleteMessage(array(
+			'QueueUrl' => $this->queueUrl,
+			'ReceiptHandle' => $receiptHandle
+		));
+
+		return $this;
 	}
 }
