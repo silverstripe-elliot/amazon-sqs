@@ -1,5 +1,5 @@
-# amazon-sqs
-Silverstripe module for sending and receiving data from the Amazon Simple Queueing Service
+# Silverstripe SQS
+Silverstripe module for sending and receiving data from the Amazon Simple Queueing Service (SQS)
 
 # Installation
 1. Clone repository into your Silverstripe webroot. 
